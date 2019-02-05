@@ -1,5 +1,6 @@
 ---
-branch: master
+# NOTE: master branch is broken right now
+branch: stable/rocky
 
 devstack_cred: secrete
 devstack_dest: /opt/stack

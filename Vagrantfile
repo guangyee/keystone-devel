@@ -20,7 +20,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       lv.memory = "4096"
     end
 
-    keystone.vm.synced_folder "./shared_dir", "/home/vagrant/shared_dir"
+    #keystone.vm.synced_folder "./shared_dir", "/home/vagrant/shared_dir"
 
     # setup private network only
     keystone.vm.network "private_network", ip: "192.168.0.10"
