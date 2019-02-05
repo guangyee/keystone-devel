@@ -1,0 +1,60 @@
+---
+# NOTE(gyee) These task works on OpenSuSE/SLES only
+
+#- name: Install build essentials
+#  become: yes
+#  zypper:
+#    name: pattern:devel_basis
+#    state: latest
+
+- name: Install essential packages
+  become: yes
+  zypper:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - git
+    - gnutls
+    - python-pip
+    - python-devel
+  when: ansible_os_family.split(' ')[0] | lower | replace('open','') == 'suse'
+
+- name: Install essential packages (Debian)
+  become: yes
+  apt:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - gnutls-bin
+    - ssl-cert
+    - python-pip
+    - python-dev
+    - libguestfs-tools
+  when: ansible_os_family == 'Debian'
+
+- name: Install/upgrade setuptools
+  become: yes
+  pip:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - pip
+    - setuptools
+
+# don't do this in production
+- name: Disable SSL verify for git
+  shell: >
+    git config --global "{{ item.name }}" "{{ item.value }}"
+  with_items:
+    - {"name": "http.sslVerify", "value": "false"}
+
+- name: Add IP address of all hosts to all hosts
+  become: yes
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*{{ item }}$'
+    line: "{{ hostvars[item].host_ip }} {{ item }}"
+    state: present
+  when: hostvars[item].ansible_host is defined and
+        hostvars[item].host_ip is defined
+  with_items: "{{ groups.all }}"

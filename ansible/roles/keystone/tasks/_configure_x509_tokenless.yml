@@ -1,0 +1,121 @@
+---
+
+- name: keystone | _configure_x509_tokenless | Copy print_issuer_hash_hex.py
+  copy:
+    src: print_issuer_hash_hex.py
+    dest: /tmp/print_issuer_hash_hex.py
+    mode: 0750
+
+- name: keystone | _configure_x509_tokenless | Get a token with 2-way SSL
+  shell:
+    openstack token issue
+  environment:
+    OS_PROJECT_DOMAIN_ID: default
+    OS_REGION_NAME: RegionOne
+    OS_USER_DOMAIN_ID: default
+    OS_PROJECT_NAME: admin
+    OS_IDENTITY_API_VERSION: 3
+    OS_PASSWORD: "{{ devstack_cred }}"
+    OS_AUTH_TYPE: password
+    OS_USERNAME: admin
+    OS_AUTH_URL: "{{ keystone_auth_url }}"
+    OS_CERT: "{{ client_ssl_cert_file }}"
+    OS_KEY: "{{ client_ssl_private_key_file }}"
+    OS_CACERT: "{{ client_ssl_ca_file }}"
+
+- name: keystone | _configure_x509_tokenless | Find the trusted issuer DN
+  become: yes
+  shell: >
+    grep -m1 'Client_Issuer_DN=' /var/log/apache2/ssl_request_log |
+    sed 's/.*Issuer_DN="//' | sed 's/"$//'
+  register: find_trusted_issuer_result
+
+- name: keystone | _configure_x509_tokenless | Calculate trusted issuer hash
+  become: yes
+  command: >
+    python /tmp/print_issuer_hash_hex.py
+    {{ find_trusted_issuer_result.stdout | quote }}
+  register: trusted_issuer_hash_hex_result
+
+- name: keystone | _configure_x509_tokenless | Configure keystone.conf
+  ini_file:
+    path: /etc/keystone/keystone.conf
+    section: tokenless_auth
+    option: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_items:
+    - {"key": "trusted_issuer",
+       "value": "{{ find_trusted_issuer_result.stdout }}"}
+    - {"key": "protocol", "value": "x509"}
+
+- name: keystone | _configure_x509_tokenless | Create IdP
+  shell: >
+    openstack identity provider create
+    {{ trusted_issuer_hash_hex_result.stdout }}
+  environment:
+    OS_PROJECT_DOMAIN_ID: default
+    OS_REGION_NAME: RegionOne
+    OS_USER_DOMAIN_ID: default
+    OS_PROJECT_NAME: admin
+    OS_IDENTITY_API_VERSION: 3
+    OS_PASSWORD: "{{ devstack_cred }}"
+    OS_AUTH_TYPE: password
+    OS_USERNAME: admin
+    OS_AUTH_URL: "{{ keystone_auth_url }}"
+    OS_CERT: "{{ client_ssl_cert_file }}"
+    OS_KEY: "{{ client_ssl_private_key_file }}"
+    OS_CACERT: "{{ client_ssl_ca_file }}"
+
+- name: keystone | _configure_x509_tokenless | 
+        Copy x509_tokenless_mapping.json
+  template:
+    src: x509_tokenless_mapping.json.j2
+    dest: "{{ user_home_dir }}/x509_tokenless_mapping.json"
+    mode: 0750
+
+- name: keystone | _configure_x509_tokenless | Create mapping
+  shell: >
+    openstack mapping create
+    --rules {{ user_home_dir }}/x509_tokenless_mapping.json
+    x509_tokenless_mapping
+  environment:
+    OS_PROJECT_DOMAIN_ID: default
+    OS_REGION_NAME: RegionOne
+    OS_USER_DOMAIN_ID: default
+    OS_PROJECT_NAME: admin
+    OS_IDENTITY_API_VERSION: 3
+    OS_PASSWORD: "{{ devstack_cred }}"
+    OS_AUTH_TYPE: password
+    OS_USERNAME: admin
+    OS_AUTH_URL: "{{ keystone_auth_url }}"
+    OS_CERT: "{{ client_ssl_cert_file }}"
+    OS_KEY: "{{ client_ssl_private_key_file }}"
+    OS_CACERT: "{{ client_ssl_ca_file }}"
+
+- name: keystone | _configure_x509_tokenless | Create protocol
+  shell: >
+    openstack federation protocol create
+    --identity-provider {{ trusted_issuer_hash_hex_result.stdout }}
+    --mapping x509_tokenless_mapping
+    x509
+  environment:
+    OS_PROJECT_DOMAIN_ID: default
+    OS_REGION_NAME: RegionOne
+    OS_USER_DOMAIN_ID: default
+    OS_PROJECT_NAME: admin
+    OS_IDENTITY_API_VERSION: 3
+    OS_PASSWORD: "{{ devstack_cred }}"
+    OS_AUTH_TYPE: password
+    OS_USERNAME: admin
+    OS_AUTH_URL: "{{ keystone_auth_url }}"
+    OS_CERT: "{{ client_ssl_cert_file }}"
+    OS_KEY: "{{ client_ssl_private_key_file }}"
+    OS_CACERT: "{{ client_ssl_ca_file }}"
+
+- name: keystone | _configure_x509_tokenless | Restart devstack@keystone
+  become: yes
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - devstack@keystone

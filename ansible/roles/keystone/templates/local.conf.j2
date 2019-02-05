@@ -1,0 +1,32 @@
+[[local|localrc]]
+
+DEST={{ devstack_dest }}
+DATA_DIR=${DEST}/data
+SERVICE_DIR=${DEST}/status
+SUBUNIT_OUTPUT=${DEST}/devstack.subunit
+
+# Enable boot from volume
+IRONIC_STORAGE_INTERFACE=cinder
+
+# Credentials
+ADMIN_PASSWORD={{ devstack_cred }}
+DATABASE_PASSWORD={{ devstack_cred }}
+RABBIT_PASSWORD={{ devstack_cred }}
+SERVICE_PASSWORD={{ devstack_cred }}
+SERVICE_TOKEN={{ devstack_cred }}
+SWIFT_HASH={{ devstack_cred }}
+SWIFT_TEMPURL_KEY={{ devstack_cred }}
+
+GIT_BASE=https://github.com
+
+# disable all services, only enable the ones we care about
+disable_all_services
+
+# only enable the services we care about
+enable_service mysql keystone
+
+#KEYSTONE_ENABLE_MOD_WSGI=True
+
+KEYSTONE_BRANCH={{ branch }}
+HOST_IP={{ host_ip }}
+

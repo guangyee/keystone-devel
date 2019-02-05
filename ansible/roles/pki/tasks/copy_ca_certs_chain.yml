@@ -1,0 +1,17 @@
+---
+
+- name: pki | install_ca_cert_chain | Get the CA certificates chain
+  become: yes
+  command: cat {{ ca_cert_chain_file }}
+  register: ca_cert_chain_out
+  delegate_to: "{{ groups.pki[0] }}"
+
+- name: pki | install_ca_cert_chain | Copy CA certificates chain to localhost
+  become: yes
+  copy:
+    content: "{{ ca_cert_chain_out.stdout }}"
+    dest: "{{ ca_certs_file }}"
+    owner: "{{ file_owner }}"
+    group: "{{ file_group }}"
+    mode: "{{ file_mode }}"
+    force: no

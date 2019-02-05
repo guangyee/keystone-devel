@@ -1,0 +1,6 @@
+---
+
+- name: pki | _install_openssl_debian | Install OpenSSL package
+  become: yes
+  apt:
+    name: openssl

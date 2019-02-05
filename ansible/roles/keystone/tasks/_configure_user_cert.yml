@@ -1,0 +1,42 @@
+---
+
+- name: keystone | _configure_user_cert | Generate private key
+  include_role:
+    name: pki
+    tasks_from: generate_private_key
+  vars:
+    key_type: "{{ client_ssl_key_type }}"
+    file_owner: vagrant
+    file_group: users
+    file_mode: 0600
+    key_size: "{{ client_ssl_key_size }}"
+    key_file: "{{ client_ssl_private_key_file }}"
+
+- name: keystone | _configure_user_cert | Generate cert request (CSR)
+  include_role:
+    name: pki
+    tasks_from: generate_user_cert_req
+  vars:
+    key_file: "{{ client_ssl_private_key_file }}"
+    user_name: "{{ client_ssl_user_name }}"
+    user_domain_name: "{{ client_ssl_user_domain_name }}"
+
+- name: keystone | _configure_user_cert | Generate user certificate
+  include_role:
+    name: pki
+    tasks_from: issue_user_cert
+  vars:
+    user_cert_file: "{{ client_ssl_cert_file }}"
+    user_name: "{{ client_ssl_user_name }}"
+    user_domain_name: "{{ client_ssl_user_domain_name }}"
+
+- name: keystone | _configure_user_cert | Copy CA certificates
+  include_role:
+    name: pki
+    tasks_from: copy_ca_certs_chain
+  vars:
+    file_owner: root
+    file_group: root
+    file_mode: 0644
+    ca_certs_file: "{{ client_ssl_ca_file }}"
+

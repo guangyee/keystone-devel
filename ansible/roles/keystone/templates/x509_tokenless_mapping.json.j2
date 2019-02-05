@@ -1,0 +1,29 @@
+[
+    {
+        "local": [
+            {
+                "user": {
+                    "name": "{0}",
+                     "domain": {
+                         "name": "{1}"
+                     },
+		     "type": "{{ x509_tokenless_user_type }}"
+                 },
+		 "group": {
+                    "domain": {
+                        "name": "Default"
+                    },
+                    "name": "admin"
+                }
+             }
+         ],
+         "remote": [
+             {
+                 "type": "SSL_CLIENT_S_DN_CN"
+             },
+             {
+                 "type": "SSL_CLIENT_S_DN_O"
+             }
+        ]
+    }
+]

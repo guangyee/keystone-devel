@@ -1,0 +1,10 @@
+---
+
+- name: pki | _generate_rsa_private_key | Generate RSA private key
+  become: yes
+  command: |
+    openssl genrsa
+      -out "{{ key_file }}"
+      "{{ key_size }}"
+  args:
+    creates: "{{ key_file }}"

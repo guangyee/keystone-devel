@@ -1,0 +1,32 @@
+---
+
+- include: _configure_server_cert.yml
+
+- name: keystone | _configure_server_ssl | Enable SSL flag for Apache2
+  become: yes
+  shell: a2enflag SSL
+  when: ansible_os_family.split(' ')[0] | lower | replace('open','') == 'suse'
+
+- name: keystone | _configure_server_ssl | Lookup Keystone public endpoint ID
+  shell: >
+    source {{ devstack_dir }}/openrc admin admin > /dev/null 2>&1;
+    openstack endpoint list --service identity --interface public -c ID -f value
+  register: keystone_public_id_result
+
+- name: keystone | _configure_server_ssl | Update public endpoint
+  shell: >
+    source {{ devstack_dir }}/openrc admin admin;
+    openstack endpoint set --interface public --service identity
+    --url {{ keystone_auth_url }} {{ keystone_public_id_result.stdout }}
+
+- name: keystone | _configure_server_ssl | Lookup Keystone admin endpoint ID
+  shell: >
+    source {{ devstack_dir }}/openrc admin admin > /dev/null 2>&1;
+    openstack endpoint list --service identity --interface admin -c ID -f value
+  register: keystone_admin_id_result
+
+- name: keystone | _configure_server_ssl | Update admin endpoint 
+  shell: >
+    source {{ devstack_dir }}/openrc admin admin;
+    openstack endpoint set --interface admin --service identity 
+    --url {{ keystone_auth_url }} {{ keystone_admin_id_result.stdout }}

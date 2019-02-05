@@ -1,0 +1,8 @@
+---
+
+- name: pki | _install_openssl_suse | Install OpenSSL package
+  become: yes
+  zypper:
+    name: openssl
+    state: latest
+

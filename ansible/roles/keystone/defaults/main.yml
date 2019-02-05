@@ -1,0 +1,34 @@
+---
+branch: master
+
+devstack_cred: secrete
+devstack_dest: /opt/stack
+devstack_dir: "{{ user_home_dir}}/devstack"
+
+# toggles whether to install keystone
+install_keystone: True
+
+# Set it to True to enable server-side SSL
+configure_server_ssl: True
+server_ssl_key_type: rsa
+server_ssl_key_size: 2048
+server_ssl_private_key_file: /etc/keystone/server_ssl_private_key.pem
+server_ssl_cert_file: /etc/keystone/server_ssl_cert.pem
+server_ssl_ca_file: /etc/keystone/ca.pem
+
+apache_listen_port: "{% if (configure_server_ssl | bool) %}443{% else %}80{% endif %}"
+
+keystone_auth_url: "{% if (configure_server_ssl | bool) %}https{% else %}http{% endif %}://{{ host_ip }}/identity"
+
+# Set it to True to setup a SSL client certificate for the demo user
+configure_user_ssl_cert: True
+client_ssl_key_type: rsa
+client_ssl_key_size: 2048
+client_ssl_private_key_file: "{{ user_home_dir }}/user_private_key.pem"
+client_ssl_cert_file: "{{ user_home_dir }}/user_cert.pem"
+client_ssl_ca_file: "{{ server_ssl_ca_file }}"
+client_ssl_user_name: admin
+client_ssl_user_domain_name: Default
+
+# Type of user to map. Can be "local" or "ephemeral".
+x509_tokenless_user_type: local

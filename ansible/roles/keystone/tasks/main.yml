@@ -1,0 +1,83 @@
+---
+
+- name: keystone | main | Check to see if Keystone is already installed
+  become: yes
+  stat:
+    path: /etc/apache2/vhosts.d/keystone.conf
+  register: apache2_keystone_conf
+
+- name: keystone | main | Set reconfigure only
+  set_fact:
+    install_keystone: False
+  when: apache2_keystone_conf.stat.exists
+
+- name: keystone | main | Clone devstack
+  git:
+    repo: https://git.openstack.org/openstack-dev/devstack.git
+    dest: "{{ devstack_dir }}"
+    version: "{{ branch }}"
+  when: install_keystone
+
+- name: keystone | main | Create local.conf
+  template:
+    src: local.conf.j2
+    dest: "{{ devstack_dir }}/local.conf"
+  when: install_keystone
+
+- name: keystone | main | Run stack.sh
+  shell: >
+    env ./stack.sh > stack.sh.log 2>&1
+  args:
+    chdir: "{{ devstack_dir }}"
+  when: install_keystone
+
+
+- name: configure server-side SSL
+  include: _configure_server_ssl.yml
+  when: configure_server_ssl
+
+- name: configure SSL client cert
+  include: _configure_user_cert.yml
+  when: configure_user_ssl_cert
+
+- name: keystone | main | Configure Apache2 listen.conf
+  become: yes
+  template:
+    src: apache2_listen.conf.j2
+    dest: /etc/apache2/conf.d/listen.conf
+
+- name: keystone | main | Configure Apache2 keystone.conf
+  become: yes
+  template:
+    src: apache2_keystone.conf.j2
+    dest: /etc/apache2/vhosts.d/keystone.conf
+
+- name: keystone | main | Remove the original Apache2 keystone-wsgi*.conf files
+  become: yes
+  file:
+    path: /etc/apache2/vhosts.d/{{ item }}
+    state: absent
+  with_items:
+    - keystone-wsgi-admin.conf
+    - keystone-wsgi-public.conf
+
+- name: keystone | main | Restart Apache2, memcached, and devstack@keystone
+  become: yes
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - devstack@keystone
+    - apache2
+    - memcached
+
+- name: keystone | main | Create admin.osrc
+  template:
+    src: admin.osrc.j2
+    dest: "{{ user_home_dir }}/admin.osrc"
+
+# NOTE(gyee) we must do this after we've enabled TLS for Keystone so we can log
+# the client certificate issuer DN, which will then use to create the identity
+# provider ID
+- name: configure X.509 tokenless auth
+  include: _configure_x509_tokenless.yml

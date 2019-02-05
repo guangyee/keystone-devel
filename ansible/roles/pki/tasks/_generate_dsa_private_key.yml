@@ -1,0 +1,11 @@
+---
+
+- name: pki | _generate_dsa_private_key | Generate DSA private key
+  become: yes
+  command: |
+    openssl dsaparam
+      -noout
+      -out "{{ key_file }}"
+      -genkey "{{ key_size }}"
+  args:
+    creates: "{{ key_file }}"

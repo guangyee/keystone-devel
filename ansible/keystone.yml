@@ -1,0 +1,24 @@
+---
+
+- hosts: all
+
+  gather_facts: "{{ enable_gather_facts }}"
+
+  # Some Debian boxes does not come with Python by default so we have
+  # to install them first.
+  pre_tasks:
+    - name: Install Python interpretor
+      raw: sudo apt-get -y install python-simplejson
+      when: need_python_interpreter is defined and 
+            ansible_os_family == 'Debian'
+
+- hosts: pki
+  # NOTE(gyee): make sure the pki role is executed before keystone as we
+  # will need to setup PKI before we can issue certificates to
+  # keystone
+  roles:
+    - role: pki
+
+- hosts: keystone
+  roles:
+    - role: keystone
