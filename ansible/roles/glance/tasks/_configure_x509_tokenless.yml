@@ -1,0 +1,40 @@
+---
+
+- name: glance | _configure_x509_tokenless | Configure glance service cert
+  include_role:
+    name: pki
+    tasks_from: configure_user_cert
+  vars:
+    client_ssl_private_key_file: /etc/glance/glance_private_key.pem
+    client_ssl_cert_file: /etc/glance/glance.pem
+    client_ssl_user_name: glance
+    client_ssl_user_do_configure_x509_tokenless_name: Default
+
+- name: glance | _configure_x509_tokenless | Configure glance.conf
+  ini_file:
+    path: /etc/glance/glance-api.conf
+    section: keystone_authtoken
+    option: "{{ item.key }}"
+    value: "{{ item.value | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  with_items:
+    - {"key": "cafile",
+       "value": "{{ client_ssl_ca_file }}"}
+    - {"key": "certfile",
+       "value": "/etc/glance/glance.pem"}
+    - {"key": "keyfile",
+       "value": "/etc/glance/glance_private_key.pem"}
+    - {"key": "auth_url",
+       "value": "{{ keystone_auth_url }}/v3"}
+    - {"key": "auth_type",
+       "value": "v3tokenlessauth"}
+    - {"key": "username",
+       "state": "absent"}
+    - {"key": "password",
+       "state": "absent"}
+
+- name: glance | _configure_x509_tokenless | Restart Glance API service
+  become: yes
+  systemd:
+    name: devstack@g-api
+    state: restarted

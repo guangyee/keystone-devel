@@ -1,0 +1,93 @@
+---
+- name: keystone | _configure_external_auth_with_kerberos |
+        install keystoneauth1[kerberos]
+  become: yes
+  pip:
+    name: 'keystoneauth1[kerberos]'
+    state: latest
+
+- name: keystone | _configure_external_auth_with_kerberos |
+        Configure keystone.conf
+  ini_file:
+    path: /etc/keystone/keystone.conf
+    section: auth
+    option: methods
+    value: "{{ auth_methods }},kerberos"
+
+- name: keystone | _configure_external_auth_with_kerberos |
+        Create {{ kerberos_domain_name }} domain
+  shell: >
+    source {{ user_home_dir }}/admin.osrc;
+    openstack domain create {{ kerberos_domain_name }}
+
+- name: keystone | _configure_external_auth_with_kerberos | 
+        Create {{ kerberos_demo_user }} domain
+  shell: >
+    source {{ user_home_dir }}/admin.osrc;
+    openstack user create --domain {{ kerberos_domain_name }}
+    {{ kerberos_demo_user  }}
+
+- name: keystone | _configure_external_auth_with_kerberos |
+        Create Kerberos service principal
+  include_role:
+    name: kerberos
+    tasks_from: add_kerberos_service
+  vars:
+    kerberos_service: HTTP/{{ inventory_hostname }}
+    kerberos_service_keytab_file: /etc/keystone/keystone.keytab
+
+- name: keystone | _configure_external_auth_with_kerberos |
+        Set keystone.keytab file permission
+  become: yes
+  file:
+    name: /etc/keystone/keystone.keytab
+    owner: wwwrun
+    group: www
+    mode: 0600
+
+- name: keystone | _configure_external_auth_with_kerberos |
+        Create Kerberos service principal
+  include_role:
+    name: kerberos
+    tasks_from: add_kerberos_user
+  vars:
+    kerberos_user: "{{ kerberos_demo_user }}"
+    kerberos_user_password: "{{ kerberos_demo_user_password }}"
+    kerberos_user_keytab_file:
+      "{{ user_home_dir }}/{{ kerberos_demo_user }}.keytab"
+
+- name: keystone | _configure_external_auth_with_kerberos |
+        Set {{ kerberos_demo_user }}.keytab file permission
+  become: yes
+  file:
+    name: "{{ user_home_dir }}/{{ kerberos_demo_user }}.keytab"
+    owner: vagrant
+    group: users
+    mode: 0600
+
+- name: keystone | _configure_external_auth_with_kerberos |
+        Copy kerberos_test.sh
+  become: yes
+  copy:
+    src: kerberos_test.sh
+    dest: "{{ user_home_dir }}//kerberos_test.sh"
+    owner: vagrant
+    group: users
+    mode: 0766
+
+- name: keystone | _configure_external_auth_with_kerberos |
+        Copy kerberos_auth.json
+  become: yes
+  copy:
+    src: kerberos_auth.json
+    dest: "{{ user_home_dir }}//kerberos_auth.json"
+    owner: vagrant
+    group: users
+    mode: 0666
+
+- name: keystone | _configure_external_auth_with_kerberos |
+        Restart Keystone service
+  become: yes
+  systemd:
+    name: devstack@keystone
+    state: restarted

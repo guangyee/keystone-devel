@@ -1,0 +1,31 @@
+[
+    {
+        "local": [
+            {
+                "user": {
+                    "name": "{0}",
+                     "domain": {
+                         "name": "{1}"
+                     },
+                     "type": "local"
+                 },
+                 "group": {
+                    "domain": {
+                        "name": "Default"
+                    },
+                    "name": "openstack_services"
+                }
+             }
+         ],
+         "remote": [
+             {
+                 "type": "SSL_CLIENT_S_DN_CN",
+                 "whitelist": ["glance", "nova", "swift", "neutron"]
+             },
+             {
+                 "type": "SSL_CLIENT_S_DN_O",
+                 "whitelist": ["Default"]
+             }
+        ]
+    }
+]

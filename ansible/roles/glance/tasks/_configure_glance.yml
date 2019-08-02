@@ -1,0 +1,13 @@
+---
+
+- name: glance | _configure_x509_tokenless | Configure glance.conf
+  ini_file:
+    path: /etc/glance/glance-api.conf
+    section: keystone_authtoken
+    option: auth_url
+    value: "{{ keystone_auth_url }}/v3"
+
+- name: glance | _configure_glance | Configure X.509 tokenless
+  include: _configure_x509_tokenless.yml
+  when: enable_x509_tokenless | bool
+

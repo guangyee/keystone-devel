@@ -1,0 +1,31 @@
+---
+# the branch to use. i.e. stable/stein
+branch: master
+
+# since this is only for developement purposes, we can use the same insecure
+# password everywhere for now. This password will be used by all the OpenStack
+# users, including service users.
+devstack_cred: secrete
+
+# use HTTPS if you are behind a corporate proxy that is blocking the git
+# protocol
+git_base_url: https://git.openstack.org
+devstack_repo_url: "{{ git_base_url }}/openstack-dev/devstack.git"
+
+# where to install devstack
+devstack_dest: /opt/stack
+devstack_dir: "{{ user_home_dir}}/devstack"
+
+# openstack services
+shared_services: mysql rabbit tempest etcd3 dstat
+keystone_services: key
+glance_services: g-api g-reg
+nova_services: n-api n-cpu n-cond n-sch n-novnc n-api-meta
+placement_services: placement-api placement-client
+cinder_services: c-sch c-api c-vol
+neutron_services: q-svc q-dhcp q-meta q-agt q-l3
+dashboard_services: horizon
+
+# enabole these services only
+enable_services: >
+    "{{ shared_services }} {{ keystone_services }} {{ glance_services }} {{ dashboard_services }}"

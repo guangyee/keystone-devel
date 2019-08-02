@@ -1,0 +1,17 @@
+---
+
+- name: horizon | _configure_websso | Fix OPENSTACK_KEYSTONE_URL
+  lineinfile:
+    path: "{{ local_settings_file }}"
+    regexp: '^OPENSTACK_KEYSTONE_URL='
+    line: 'OPENSTACK_KEYSTONE_URL="{{ keystone_websso_url }}"'
+
+- name: horizon | _configure_websso | Copy local_settings_federation_append
+  template:
+    src: local_settings_federation_append.j2
+    dest: /tmp/local_settings_federation_append
+
+- name: horizon | _configure_websso | Enable WebSSO
+  shell: >
+    cat /tmp/local_settings_federation_append >> {{ local_settings_file }}
+

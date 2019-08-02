@@ -1,0 +1,19 @@
+[libdefaults]
+    dns_canonicalize_hostname = true
+    rdns = true
+    default_ccache_name = FILE:/tmp/krb5cc_%{uid}
+    default_realm = KEYSTONE
+
+[realms]
+    KEYSTONE = {
+        kdc = {{ ansible_host }}
+        admin_server = {{ ansible_host }}
+    }
+
+[logging]
+    kdc = FILE:/var/log/krb5/krb5kdc.log
+    admin_server = FILE:/var/log/krb5/kadmind.log
+    default = SYSLOG:NOTICE:DAEMON
+
+[domain_realm]
+    * = KEYSTONE

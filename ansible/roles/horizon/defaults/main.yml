@@ -1,0 +1,3 @@
+---
+
+local_settings_file: "{{ devstack_dest }}/horizon/openstack_dashboard/local/local_settings.py"

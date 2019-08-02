@@ -1,0 +1,49 @@
+---
+# NOTE(gyee): see
+# https://doc.opensuse.org/documentation/leap/security/html/book.security/cha.security.kerberos.html
+
+- name: kerberos | _configure_kerberos | Install Kerberos packages
+  become: yes
+  zypper:
+    name: ['apache2-mod_auth_kerb', 'krb5', 'krb5-server', 'krb5-client',
+           'krb5-devel']
+    state: latest
+
+- name: kerberos | _configure_kerberos | Configure krb5.conf
+  become: yes
+  template:
+    src: krb5.conf.j2
+    dest: /etc/krb5.conf
+    mode: 0644
+
+- name: kerberos | _configure_kerberos | Configure kdc.conf
+  become: yes
+  file:
+    src: kdc.conf
+    dest: /var/lib/kerberos/krb5kdc/kdc.conf
+    mode: 0600
+
+- name: kerberos | _configure_kerberos | Copy kdb5_util_auto_response
+  become: yes
+  template:
+    src: kdb5_util_auto_response.j2
+    dest: /tmp/kdb5_util_auto_response
+    owner: root
+    group: root
+    mode: 0600
+
+- name: kerberos | _configure_kerberos | Setup database
+  become: yes
+  shell: >
+    cat /tmp/kdb5_util_auto_response |
+    /usr/lib/mit/sbin/kdb5_util create -r KEYSTONE -s
+
+- name: kerberos | _configure_kerberos | Start KDC
+  become: yes
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  with_items:
+    - kadmind
+    - krb5kdc

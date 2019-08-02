@@ -1,0 +1,90 @@
+---
+
+- name: keystone | _configure_oidc | Create IdP
+  shell: >
+    source {{ user_home_dir }}/admin.osrc;
+    openstack identity provider create
+    --remote-id {{ oidc_idp_remote_id }}
+    {{ oidc_identity_provider }}
+
+- name: keystone | _configure_oidc | 
+        Copy oidc_mapping.json
+  copy:
+    src: oidc_mapping.json
+    dest: "{{ user_home_dir }}/oidc_mapping.json"
+    mode: 0750
+
+- name: keystone | _configure_oidc | Create mapping
+  shell: >
+    source {{ user_home_dir }}/admin.osrc;
+    openstack mapping create
+    --rules {{ user_home_dir }}/oidc_mapping.json
+    openid_mapping
+
+- name: keystone | _configure_oidc | Create protocol
+  shell: >
+    source {{ user_home_dir }}/admin.osrc;
+    openstack federation protocol create
+    --identity-provider {{ oidc_identity_provider }}
+    --mapping openid_mapping
+    openid
+
+- name: keystone | _configure_oidc | Create oidc_demo group
+  shell: >
+    source {{ user_home_dir }}/admin.osrc;
+    openstack group create --description "OIDC Demo"
+    -c id -f value openid_demo
+  register: group_create_result
+
+- name: keystone | _configure_oidc | Lookup Member role ID
+  shell: >
+    source {{ user_home_dir }}/admin.osrc;
+    openstack role show Member -f value -c id
+  register: member_role_lookup_result
+
+- name: keystone | _configure_oidc | Create openid_demo project
+  shell: >
+    source {{ user_home_dir }}/admin.osrc;
+    openstack project create -f value -c id openid_demo
+  register: project_create_result
+
+- name: keystone | _configure_oidc |
+        Role assignment for openid_demo group
+  shell: >
+    source {{ user_home_dir }}/admin.osrc;
+    openstack role add --project {{ project_create_result.stdout }}
+    --group {{ group_create_result.stdout }}
+    {{ member_role_lookup_result.stdout }}
+
+- name: keystone | _configure_oidc | Configure keystone.conf federation
+  ini_file:
+    path: /etc/keystone/keystone.conf
+    section: federation
+    option: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_items:
+    - {"key": "remote_id_attribute",
+       "value": "HTTP_OIDC_ISS"}
+    - {"key": "trusted_dashboard", "value": "{{ trusted_dashboard_url }}"}
+
+- name: keystone | _configure_oidc | Configure keystone.conf auth methods
+  ini_file:
+    path: /etc/keystone/keystone.conf
+    section: auth
+    option: methods
+    value: "{{ auth_methods }},openid"
+
+- name: keystone | _configure_oidc | Copy sso_callback_template.html
+  become: yes
+  copy:
+    remote_src: yes 
+    src: "{{ devstack_dest }}/keystone/etc/sso_callback_template.html"
+    dest: /etc/keystone/sso_callback_template.html
+    owner: wwwrun
+    group: www
+
+- name: keystone | _configure_oidc | Restart Keystone service
+  become: yes
+  systemd:
+    name: devstack@keystone
+    state: restarted

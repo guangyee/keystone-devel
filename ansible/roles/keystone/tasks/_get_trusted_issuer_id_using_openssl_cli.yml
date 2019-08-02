@@ -1,0 +1,29 @@
+---
+
+- name: keystone | _get_trusted_issuer_id_using_openssl_cli |
+        Find the trusted issuer DN
+  become: yes
+  shell: >
+    openssl x509 -issuer -noout -in {{ server_ssl_cert_file }}
+    -nameopt rfc2253 | sed 's/^\s*issuer=//'
+  register: find_trusted_issuer_result
+
+- name: keystone | _get_trusted_issuer_id_using_openssl_cli |
+        Set trusted_issuer_dn
+  set_fact:
+    trusted_issuer_dn: "{{ find_trusted_issuer_result.stdout | trim }}"
+
+- name: keystone | _get_trusted_issuer_id_using_openssl_cli |
+        Calculate trusted issuer hash
+  become: yes
+  shell: >
+    echo {{ trusted_issuer_dn | quote }} |
+    tr -d '\n' |
+    openssl dgst -sha256 -hex |
+    awk '{print $2}'
+  register: trusted_issuer_hash_hex_result
+
+- name: keystone | _get_trusted_issuer_id_using_openssl_cli |
+        Set x509_idp_id
+  set_fact:
+    x509_idp_id: "{{ trusted_issuer_hash_hex_result.stdout }}"

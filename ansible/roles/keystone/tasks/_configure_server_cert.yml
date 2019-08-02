@@ -1,9 +1,5 @@
 ---
 
-- set_fact:
-    ssl_server_san: IP:{{ host_ip }}
-  when: host_ip is defined and not host_ip == ""
-
 - name: keystone | _configure_server_cert | Generate private key
   include_role:
     name: pki

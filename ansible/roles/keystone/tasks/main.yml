@@ -1,83 +1,46 @@
 ---
-
-- name: keystone | main | Check to see if Keystone is already installed
-  become: yes
+# Since Ansible is supposed to be idempotent, we'll use _keystone_configured_
+# file to indicate that keystone has already been successfully configured
+# so that the next Ansible provision run will skip this step.
+- name: keystone | main | Check {{ devstack_dest }}/_keystone_configured_ exist
   stat:
-    path: /etc/apache2/vhosts.d/keystone.conf
-  register: apache2_keystone_conf
+    path: "{{ devstack_dest }}/_keystone_configured_"
+  register: keystone_configured_stat_result
 
-- name: keystone | main | Set reconfigure only
-  set_fact:
-    install_keystone: False
-  when: apache2_keystone_conf.stat.exists
-
-- name: keystone | main | Clone devstack
-  git:
-    repo: https://git.openstack.org/openstack-dev/devstack.git
-    dest: "{{ devstack_dir }}"
-    version: "{{ branch }}"
-  when: install_keystone
-
-- name: keystone | main | Create local.conf
-  template:
-    src: local.conf.j2
-    dest: "{{ devstack_dir }}/local.conf"
-  when: install_keystone
-
-- name: keystone | main | Run stack.sh
-  shell: >
-    env ./stack.sh > stack.sh.log 2>&1
-  args:
-    chdir: "{{ devstack_dir }}"
-  when: install_keystone
-
-
-- name: configure server-side SSL
-  include: _configure_server_ssl.yml
-  when: configure_server_ssl
-
-- name: configure SSL client cert
-  include: _configure_user_cert.yml
-  when: configure_user_ssl_cert
-
-- name: keystone | main | Configure Apache2 listen.conf
+- name: keystone | main | Install Apache2 mode_auth_openidc
   become: yes
-  template:
-    src: apache2_listen.conf.j2
-    dest: /etc/apache2/conf.d/listen.conf
+  zypper:
+    name: ['apache2-mod_auth_openidc']
+    state: latest
+  when: enable_oidc | bool
 
-- name: keystone | main | Configure Apache2 keystone.conf
+- name: keystone | main | Enable auth_openidc Apache2 module
   become: yes
-  template:
-    src: apache2_keystone.conf.j2
-    dest: /etc/apache2/vhosts.d/keystone.conf
+  apache2_module:
+    name: auth_openidc
+    state: present
+  when: enable_oidc | bool
 
-- name: keystone | main | Remove the original Apache2 keystone-wsgi*.conf files
+- name: keystone | main | Enable auth_kerb Apache2 module
   become: yes
-  file:
-    path: /etc/apache2/vhosts.d/{{ item }}
-    state: absent
-  with_items:
-    - keystone-wsgi-admin.conf
-    - keystone-wsgi-public.conf
+  apache2_module:
+    name: auth_kerb
+    state: present
+  when: enable_kerberos_external_auth | bool
 
-- name: keystone | main | Restart Apache2, memcached, and devstack@keystone
+- name: keystone | main | Restart Apache2
   become: yes
   systemd:
-    name: "{{ item }}"
+    name: apache2
     state: restarted
-  with_items:
-    - devstack@keystone
-    - apache2
-    - memcached
+  when: enable_oidc | bool
 
-- name: keystone | main | Create admin.osrc
-  template:
-    src: admin.osrc.j2
-    dest: "{{ user_home_dir }}/admin.osrc"
+- name: keystone | main | Configure Keystone
+  include: _configure_keystone.yml
+  when: keystone_configured_stat_result.stat.exists == false
 
-# NOTE(gyee) we must do this after we've enabled TLS for Keystone so we can log
-# the client certificate issuer DN, which will then use to create the identity
-# provider ID
-- name: configure X.509 tokenless auth
-  include: _configure_x509_tokenless.yml
+- name: keystone | main | Create {{ devstack_dest }}/_keystone_configured_
+  file:
+    path: "{{ devstack_dest }}/_keystone_configured_"
+    state: touch
+

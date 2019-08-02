@@ -1,35 +1,102 @@
 ---
-# NOTE: master branch is broken right now
-branch: stable/rocky
 
-devstack_cred: secrete
-devstack_dest: /opt/stack
-devstack_dir: "{{ user_home_dir}}/devstack"
+# Keystone features. Notice that some features are mutually exclusive.
+# For example, we can enable external auth with Kerberos and federation
+# at the same time.
 
-# toggles whether to install keystone
-install_keystone: True
+# Enable SSL/TLS for Keystone
+enable_server_ssl: false
 
-# Set it to True to enable server-side SSL
-configure_server_ssl: True
+# Enable X.509 tokenless authn/authz
+enable_x509_tokenless: false
+
+# Enable external auth with Kerberos. This feature is mutually exclusive with
+# the federation features.
+enable_kerberos_external_auth: true
+
+# Enable OpenID Connect. When talking to Google OpenID provider, we must
+# also set 'enable_server_ssl: true'.
+enable_oidc: false
+
+
+##########################
+# Default Configurations #
+##########################
+auth_methods: external,password,token,oauth1,mapped,application_credential
+
+
+#########################################
+# Keystone server SSL/TLS Configuration #
+#########################################
+http_protocol: "{% if (enable_x509_tokenless | bool or enable_server_ssl | bool) %}https{% else %}http{% endif %}"
+
+apache_listen_port: "{% if (enable_x509_tokenless | bool or enable_server_ssl | bool) %}443{% else %}80{% endif %}"
+keystone_auth_url: "{{ http_protocol }}://{{ host_ip }}/identity"
+
 server_ssl_key_type: rsa
 server_ssl_key_size: 2048
 server_ssl_private_key_file: /etc/keystone/server_ssl_private_key.pem
 server_ssl_cert_file: /etc/keystone/server_ssl_cert.pem
 server_ssl_ca_file: /etc/keystone/ca.pem
+ssl_server_san: IP:{{ host_ip }}{% if (enable_oidc | bool) %},DNS:{{ fully_qualified_server_name }}{% endif %}
 
-apache_listen_port: "{% if (configure_server_ssl | bool) %}443{% else %}80{% endif %}"
 
-keystone_auth_url: "{% if (configure_server_ssl | bool) %}https{% else %}http{% endif %}://{{ host_ip }}/identity"
+#################################
+# X.509 Tokenless Configuration #
+#################################
 
-# Set it to True to setup a SSL client certificate for the demo user
-configure_user_ssl_cert: True
+# Type of user to map. Can be "local" or "ephemeral".
+x509_tokenless_user_type: ephemeral
+
+# Federation protocol to use
+x509_tokenless_protocol: x509
+
+# Configure trusted issuer by inspecting the SSL logs. Since the IDP ID is
+# calculated by hashing the client certificate issuer DN string, the format
+# of the issuer DN string is significant. If we are unsure about the format
+# of the issuer DN used by the SSL terminator, we should configure the
+# trusted issuer by parsing the SSL logs to get the exact issuer DN.
+# On the other hand, if we know the issuer DN string from a known SSL
+# terminator, we should be able to use openssl CLI directly to calculate
+# the trusted issuer. These options are mutually exclusive.
+configure_trusted_issuer_via_ssl_logs: false
+configure_trusted_issuer_via_openssl_cli: true
+
+# Configure SSL client cert for the demo user for testing purposes
 client_ssl_key_type: rsa
 client_ssl_key_size: 2048
 client_ssl_private_key_file: "{{ user_home_dir }}/user_private_key.pem"
 client_ssl_cert_file: "{{ user_home_dir }}/user_cert.pem"
 client_ssl_ca_file: "{{ server_ssl_ca_file }}"
-client_ssl_user_name: admin
+client_ssl_user_name: demo
 client_ssl_user_domain_name: Default
 
-# Type of user to map. Can be "local" or "ephemeral".
-x509_tokenless_user_type: local
+##########################
+# Kerberos Configuration #
+##########################
+
+kerberos_domain_name: keystone_kerberos
+kerberos_demo_user: kerberos_demo_user
+kerberos_demo_user_password: secrete
+
+###################################
+# Common Federation Configuration #
+###################################
+fully_qualified_server_name: www.keystoneoidctest.org
+trusted_dashboard_url: "http://{{ fully_qualified_server_name }}/dashboard/auth/websso/"
+
+keystone_websso_url: "{{ http_protocol }}://{{ fully_qualified_server_name }}/identity/v3"
+
+################################
+# OpenID Connect Configuration #
+################################
+
+# To test against Google API, these values are coming from
+# https://console.developers.google.com/apis/credentials
+
+oidc_client_id: foo
+oidc_client_secret: foo
+oidc_crypto_passphrase: "{{ lookup('password', '/dev/null length=15 chars=ascii_letters') }}"
+oidc_redirect_url: "{{ http_protocol }}://www.keystoneoidctest.org/identity/v3/OS-FEDERATION/identity_providers/google/protocols/openid/auth"
+oidc_identity_provider: google
+oidc_idp_remote_id: "https://accounts.google.com"

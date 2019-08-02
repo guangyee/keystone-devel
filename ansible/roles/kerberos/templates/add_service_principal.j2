@@ -1,0 +1,4 @@
+addprinc -randkey {{ kerberos_service }}
+ktadd -k {{ kerberos_service_keytab_file }} {{ kerberos_service }}
+exit
+

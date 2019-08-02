@@ -1,0 +1,18 @@
+---
+
+- name: horizon | _configure_horizon | Fix OPENSTACK_SSL_CACERT
+  lineinfile:
+    path: "{{ local_settings_file }}"
+    regexp: '^OPENSTACK_SSL_CACERT='
+    line: 'OPENSTACK_SSL_CACERT="{{ server_ssl_ca_file }}"'
+  when: enable_x509_tokenless | bool or enable_server_ssl | bool
+
+- name: horizon | _configure_horizon | Configure WebSSO
+  include: _configure_websso.yml
+  when: enable_oidc | bool
+
+- name: horizon | _configure_horizon | Restart apache2 service
+  become: yes
+  systemd:
+    name: apache2
+    state: restarted

@@ -1,0 +1,16 @@
+---
+
+- name: kerberos | add_kerberos_user | Copy add_user_principal
+  become: yes
+  template:
+    src: add_user_principal.j2
+    dest: /tmp/add_user_principal.{{ kerberos_user }}
+    owner: root
+    group: root
+    mode: 0600
+
+- name: kerberos | add_kerberos_user | Create {{ kerberos_user }}
+  become: yes
+  shell: >
+    cat /tmp/add_user_principal.{{ kerberos_user }} |
+    /usr/lib/mit/sbin/kadmin.local

@@ -12,6 +12,10 @@
       when: need_python_interpreter is defined and 
             ansible_os_family == 'Debian'
 
+- hosts: kerberos
+  roles:
+    - role: kerberos
+
 - hosts: pki
   # NOTE(gyee): make sure the pki role is executed before keystone as we
   # will need to setup PKI before we can issue certificates to
@@ -22,3 +26,11 @@
 - hosts: keystone
   roles:
     - role: keystone
+
+- hosts: glance
+  roles:
+    - role: glance
+
+- hosts: horizon
+  roles:
+    - role: horizon

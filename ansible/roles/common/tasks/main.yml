@@ -10,36 +10,15 @@
 - name: Install essential packages
   become: yes
   zypper:
-    name: "{{ item }}"
+    name: ['git', 'gnutls', 'python-pip', 'python-devel', 'libvirt',
+           'bridge-utils', 'hostname']
     state: latest
-  with_items:
-    - git
-    - gnutls
-    - python-pip
-    - python-devel
-  when: ansible_os_family.split(' ')[0] | lower | replace('open','') == 'suse'
-
-- name: Install essential packages (Debian)
-  become: yes
-  apt:
-    name: "{{ item }}"
-    state: latest
-  with_items:
-    - gnutls-bin
-    - ssl-cert
-    - python-pip
-    - python-dev
-    - libguestfs-tools
-  when: ansible_os_family == 'Debian'
 
 - name: Install/upgrade setuptools
   become: yes
   pip:
-    name: "{{ item }}"
+    name: ['pip', 'setuptools']
     state: latest
-  with_items:
-    - pip
-    - setuptools
 
 # don't do this in production
 - name: Disable SSL verify for git

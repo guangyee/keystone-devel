@@ -1,0 +1,18 @@
+---
+
+- name: devstack | _deploy_devstack | Clone devstack
+  git:
+    repo: "{{ devstack_repo_url }}"
+    dest: "{{ devstack_dir }}"
+    version: "{{ branch }}"
+
+- name: devstack | _deploy_devstack | Create local.conf
+  template:
+    src: local.conf.j2
+    dest: "{{ devstack_dir }}/local.conf"
+
+- name: devstack | _deploy_devstack | Run stack.sh
+  shell: >
+    env ./stack.sh > stack.sh.log 2>&1
+  args:
+    chdir: "{{ devstack_dir }}"

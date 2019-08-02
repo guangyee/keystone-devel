@@ -1,0 +1,17 @@
+---
+# Since Ansible is supposed to be idempotent, we'll use _kerberos_configured_
+# file to indicate that kerberos has already been successfully configured
+# so that the next Ansible provision run will skip this step.
+- name: kerberos | main | Check {{ devstack_dest }}/_kerberos_configured_ exist
+  stat:
+    path: "{{ user_home_dir }}/_kerberos_configured_"
+  register: kerberos_configured_stat_result
+
+- name: kerberos | main | Configure Kerberos
+  include: _configure_kerberos.yml
+  when: kerberos_configured_stat_result.stat.exists == false
+
+- name: kerberos | main | Create {{ devstack_dest }}/_kerberos_configured_
+  file:
+    path: "{{ user_home_dir }}/_kerberos_configured_"
+    state: touch

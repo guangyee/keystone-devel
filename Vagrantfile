@@ -8,7 +8,8 @@ ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.define "keystone-idp", autostart: true, primary: true do |keystone|
-    keystone.vm.box = "opensuse/openSUSE-42.3-x86_64"
+    #keystone.vm.box = "opensuse/openSUSE-15.0-x86_64"
+    keystone.vm.box = "dcermak/openSUSE-Leap-15.1-Vagrant.x86_64"
     keystone.vm.hostname = "keystone-idp"
 
     keystone.vm.provider "virtualbox" do |vb|
@@ -21,6 +22,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
 
     #keystone.vm.synced_folder "./shared_dir", "/home/vagrant/shared_dir"
+
+    # for Horizon browser access
+    #config.vm.network "forwarded_port", guest: 80, host: 80
+    #config.vm.network "forwarded_port", guest: 443, host: 443
 
     # setup private network only
     keystone.vm.network "private_network", ip: "192.168.0.10"
@@ -35,8 +40,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       "user_home_dir" => "/home/vagrant"
     }
     ansible.groups = {
+      "kerberos" => ["keystone-idp"],
       "keystone" => ["keystone-idp"],
-      "pki" => ["keystone-idp"]
+      "pki" => ["keystone-idp"],
+      "glance" => ["keystone-idp"],
+      "horizon" => ["keystone-idp"]
     }
     ansible.host_vars = {
       "keystone-idp" => {

@@ -1,0 +1,6 @@
+---
+
+master_password: secrete
+demo_user_password: secrete
+
+http_keytab_file: /etc/keystone/keystone.keytab

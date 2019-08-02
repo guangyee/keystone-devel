@@ -1,0 +1,71 @@
+<VirtualHost {{ host_ip }}:{{ apache_listen_port }}>
+        {% if (enable_oidc | bool) %}
+        ServerName {{ fully_qualified_server_name }}
+        {% else %}
+        ServerName localhost
+        {% endif %}
+        ProxyPass "/identity" "unix:/var/run/uwsgi/keystone-wsgi-public.socket|uwsgi://uwsgi-uds-keystone-wsgi-public/" retry=0
+        # NOTE(gyee): identity_admin hasn't been working since the removal of v2.0 APIs. And it is expected
+        # to go away very soon.
+        #ProxyPass "/identity_admin" "unix:/var/run/uwsgi/keystone-wsgi-admin.socket|uwsgi://uwsgi-uds-keystone-wsgi/" retry=0
+
+        #  General setup for the virtual host
+        #DocumentRoot "/srv/www/htdocs"
+        #ServerAdmin webmaster@example.com
+        ErrorLog /var/log/apache2/error_log
+        TransferLog /var/log/apache2/access_log
+
+        #   SSL Engine Switch:
+        #   Enable/Disable SSL for this virtual host.
+        SSLEngine on
+
+        #   You can use per vhost certificates if SNI is supported.
+        SSLCertificateFile {{ server_ssl_cert_file }}
+        SSLCertificateKeyFile {{ server_ssl_private_key_file }}
+        SSLCACertificateFile {{ server_ssl_ca_file }}
+        SSLOptions +StdEnvVars
+        SSLVerifyDepth 3
+        SSLVerifyClient optional
+
+        #   Per-Server Logging:
+        #   The home of a custom SSL log file. Use this when you want a
+        #   compact non-error SSL logfile on a virtual host basis.
+        CustomLog /var/log/apache2/ssl_request_log   ssl_combined
+
+        # NOTE(gyee) This is needed so we can find out the exact name Apache2 mod_ssl is
+        # setting. It is needed to calculate the correct identity provider ID.
+        LogFormat "%t %h \"%{SSL_CLIENT_S_DN}x\" Client_Issuer_DN=\"%{SSL_CLIENT_I_DN}e\"" ssl_client_cert
+        CustomLog /var/log/apache2/ssl_request_log ssl_client_cert
+
+</VirtualHost>
+
+{% if (enable_oidc | bool) %}
+# See https://github.com/zmartzone/mod_auth_openidc/blob/master/auth_openidc.conf
+OIDCClaimPrefix "OIDC-"
+OIDCResponseType "id_token"
+OIDCScope "openid email profile"
+OIDCProviderMetadataURL https://accounts.google.com/.well-known/openid-configuration
+OIDCClientID  {{ oidc_client_id }}
+OIDCClientSecret {{ oidc_client_secret }}
+OIDCCryptoPassphrase {{ oidc_crypto_passphrase }}
+OIDCRedirectURI {{ oidc_redirect_url }}
+#OIDCPassClaimsAs both
+#OIDCPassIDTokenAs claims
+
+<Location /identity/v3/OS-FEDERATION/identity_providers/google/protocols/openid/auth>
+    Require valid-user
+    AuthType openid-connect
+    LogLevel debug
+</Location>
+
+<Location /identity/v3/auth/OS-FEDERATION/websso/openid>
+    Require valid-user
+    AuthType openid-connect
+    LogLevel debug
+</Location>
+<Location /identity/v3/auth/OS-FEDERATION/identity_providers/google/protocols/openid/websso>
+    Require valid-user
+    AuthType openid-connect
+    LogLevel debug
+</Location>
+{% endif %}

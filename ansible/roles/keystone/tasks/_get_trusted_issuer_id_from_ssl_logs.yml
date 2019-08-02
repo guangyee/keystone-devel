@@ -1,0 +1,55 @@
+---
+
+- name: keystone | _get_trusted_issuer_id_from_ssl_logs |
+        Create a demo client cert
+  include_role:
+    name: pki
+    tasks_from: configure_user_cert
+
+# NOTE(gyee): we're doing this so that the client cert issuer DN gets logged
+# in the Apache SSL logs.
+- name: keystone | _get_trusted_issuer_id_from_ssl_logs |
+        Get a token with 2-way SSL
+  shell:
+    openstack token issue
+  environment:
+    OS_PROJECT_DOMAIN_ID: default
+    OS_REGION_NAME: RegionOne
+    OS_USER_DOMAIN_ID: default
+    OS_PROJECT_NAME: admin
+    OS_IDENTITY_API_VERSION: 3
+    OS_PASSWORD: "{{ devstack_cred }}"
+    OS_AUTH_TYPE: password
+    OS_USERNAME: admin
+    OS_AUTH_URL: "{{ keystone_auth_url }}"
+    OS_CERT: "{{ client_ssl_cert_file }}"
+    OS_KEY: "{{ client_ssl_private_key_file }}"
+    OS_CACERT: "{{ client_ssl_ca_file }}"
+
+- name: keystone | _get_trusted_issuer_id_from_ssl_logs |
+        Find the trusted issuer DN
+  become: yes
+  shell: >
+    grep -m1 'Client_Issuer_DN=' /var/log/apache2/ssl_request_log |
+    sed 's/.*Issuer_DN="//' | sed 's/"$//'
+  register: find_trusted_issuer_result
+
+- name: keystone | _get_trusted_issuer_id_from_ssl_logs |
+        Set trusted_issuer_dn
+  set_fact:
+    trusted_issuer_dn: "{{ find_trusted_issuer_result.stdout | trim }}"
+
+- name: keystone | _get_trusted_issuer_id_from_ssl_logs |
+        Calculate trusted issuer hash
+  become: yes
+  shell: >
+    echo {{ trusted_issuer_dn | quote }} |
+    tr -d '\n' |
+    openssl dgst -sha256 -hex |
+    awk '{print $2}'
+  register: trusted_issuer_hash_hex_result
+
+- name: keystone | _get_trusted_issuer_id_from_ssl_logs |
+        Set x509_idp_id
+  set_fact:
+    x509_idp_id: "{{ trusted_issuer_hash_hex_result.stdout }}"

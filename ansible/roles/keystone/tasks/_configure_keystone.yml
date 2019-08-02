@@ -1,0 +1,52 @@
+---
+
+- name: keystone | _configure_keystone | Configure server-side SSL
+  include: _configure_server_ssl.yml
+  when: enable_x509_tokenless | bool or enable_server_ssl | bool
+
+- name: keystone | _configure_keystone | Configure Apache2 keystone.conf with SSL enabled
+  become: yes
+  template:
+    src: apache2_keystone_x509.conf.j2
+    dest: /etc/apache2/vhosts.d/keystone.conf
+  when: enable_x509_tokenless | bool or enable_server_ssl | bool
+
+- name: keystone | _configure_keystone |
+        Configure Apache2 keystone-wsgi-public.conf
+  become: yes
+  template:
+    src: apache2_keystone.conf.j2
+    dest: /etc/apache2/vhosts.d/keystone-wsgi-public.conf
+
+- name: keystone | _configure_keystone | Restart Apache2, memcached, and devstack@keystone
+  become: yes
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - devstack@keystone
+    - apache2
+    - memcached
+
+- name: keystone | _configure_keystone | Create the osrcs
+  template:
+    src: "{{ item }}.osrc.j2"
+    dest: "{{ user_home_dir }}/{{ item }}.osrc"
+  with_items:
+    - admin
+    - demo
+
+# NOTE(gyee) we must do this after we've enabled TLS for Keystone so we can log
+# the client certificate issuer DN, which will then use to create the identity
+# provider ID
+- name: keystone | _configure_keystone | Configure X.509 tokenless auth
+  include: _configure_x509_tokenless.yml
+  when: enable_x509_tokenless | bool
+
+- name: keystone | _configure_keystone | Configure OIDC
+  include: _configure_oidc.yml
+  when: enable_oidc | bool
+
+- name: keystone | _configure_keystone | Configure Kerberos external auth
+  include: _configure_external_auth_with_kerberos.yml
+  when: enable_kerberos_external_auth | bool

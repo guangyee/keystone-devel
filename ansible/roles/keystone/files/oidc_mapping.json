@@ -4,26 +4,25 @@
             {
                 "user": {
                     "name": "{0}",
-                     "domain": {
-                         "name": "{1}"
-                     },
-		     "type": "{{ x509_tokenless_user_type }}"
+                    "email": "{1}",
+                    "type": "ephemeral"
                  },
-		 "group": {
+                 "group": {
                     "domain": {
                         "name": "Default"
                     },
-                    "name": "admin"
+                    "name": "openid_demo"
                 }
              }
          ],
          "remote": [
              {
-                 "type": "SSL_CLIENT_S_DN_CN"
+                 "type": "REMOTE_USER"
              },
              {
-                 "type": "SSL_CLIENT_S_DN_O"
+                 "type": "HTTP_OIDC_EMAIL"
              }
+             
         ]
     }
 ]

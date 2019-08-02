@@ -1,0 +1,4 @@
+ank -pw {{ kerberos_user_password }} {{ kerberos_user }}
+ktadd -k {{ kerberos_user_keytab_file }} {{ kerberos_user }}
+exit
+

@@ -1,0 +1,9 @@
+{ "auth": {
+    "identity": {
+      "methods": ["kerberos"],
+      "kerberos": {
+      }
+    }
+  }
+}
+

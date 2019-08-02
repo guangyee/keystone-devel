@@ -1,0 +1,28 @@
+[
+    {
+        "local": [
+            {
+                "user": {
+                    "name": "{0}",
+                     "type": "ephemeral"
+                 },
+                 "group": {
+                    "domain": {
+                        "name": "Default"
+                    },
+                    "name": "openstack_services"
+                }
+             }
+         ],
+         "remote": [
+             {
+                 "type": "SSL_CLIENT_S_DN_CN",
+                 "whitelist": ["glance", "nova", "swift", "neutron"]
+             },
+             {
+                 "type": "SSL_CLIENT_S_DN_O",
+                 "whitelist": ["Default"]
+             }
+        ]
+    }
+]

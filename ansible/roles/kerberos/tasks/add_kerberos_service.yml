@@ -1,0 +1,21 @@
+---
+
+- name: kerberos | add_kerberos_service | Set add_service_prinicipal filename
+  set_fact:
+    add_service_principal_file:
+      "/tmp/add_service_principal.{{ kerberos_service | to_uuid }}"
+
+- name: kerberos | add_kerberos_service | Copy add_service_principal
+  become: yes
+  template:
+    src: add_service_principal.j2
+    dest: "{{ add_service_principal_file }}"
+    owner: root
+    group: root
+    mode: 0600
+
+- name: kerberos | add_kerberos_service | Create {{ kerberos_service }}
+  become: yes
+  shell: >
+    cat {{ add_service_principal_file }} |
+    /usr/lib/mit/sbin/kadmin.local
